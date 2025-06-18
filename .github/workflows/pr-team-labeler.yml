@@ -45,7 +45,7 @@ jobs:
             const labelsToAdd = new Set();
 
             // 각 팀의 멤버들을 확인
-            for (const [teamName, members] of Object.entries(teams)) {
+            teamLoop: for (const [teamName, members] of Object.entries(teams)) {
               // members가 문자열인 경우 배열로 변환
               const memberArray = Array.isArray(members) ? members : members.toString().split(',').map(m => m.trim());
               console.log(`Checking team: ${teamName}, members: ${memberArray.join(', ')}`);
@@ -58,7 +58,7 @@ jobs:
                   if (prTitle.includes(member.trim())) {
                     labelsToAdd.add(teamName);
                     console.log(`Found member: ${member} from team: ${teamName} -> adding label: ${teamName}`);
-                    break; // 해당 팀에서 한 명이라도 찾으면 더 이상 확인하지 않음
+                    break teamLoop; // 팀을 찾으면 모든 검사를 중단
                   }
                 }
               }
@@ -78,13 +78,6 @@ jobs:
                 
                 console.log(`Successfully added labels: ${labelsArray.join(', ')}`);
                 
-                // PR에 코멘트 추가 (선택사항)
-                await github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: context.payload.pull_request.number,
-                  body: `🏷️ 팀 멤버가 감지되어 자동으로 라벨이 추가되었습니다: ${labelsArray.map(label => `\`${label}\``).join(', ')}`
-                });
                 
               } catch (error) {
                 console.error('Error adding labels:', error);
@@ -94,10 +87,10 @@ jobs:
                   try {
                     // 팀별 색상 설정
                     const teamColors = {
-                      'team-teama': '0052cc',
-                      'team-teamb': 'ff6b6b', 
-                      'team-teamc': '4ecdc4',
-                      'team-teamd': 'ffe66d'
+                      'TeamA': '0052cc',
+                      'TeamB': 'ff6b6b', 
+                      'TeamC': '4ecdc4',
+                      'TeamD': 'ffe66d'
                     };
                     
                     const color = teamColors[label] || 'E91E63';
@@ -107,7 +100,7 @@ jobs:
                       repo: context.repo.repo,
                       name: label,
                       color: color,
-                      description: `Team label for ${label.replace('team-', '')}`
+                      description: `Team label for ${label}`
                     });
                     console.log(`Created new label: ${label}`);
                   } catch (createError) {
