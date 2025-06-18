@@ -67,56 +67,24 @@ jobs:
             // 라벨 추가
             if (labelsToAdd.size > 0) {
               const labelsArray = Array.from(labelsToAdd);
+              console.log('Labels to add:', labelsArray);
               
               try {
-                // 현재 PR의 라벨 가져오기
-                const { data: currentLabels } = await github.rest.issues.listLabelsOnIssue({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: context.payload.pull_request.number,
-                });
+                // 팀별 색상 설정
+                const teamColors = {
+                  'TeamA': '0969da', // GitHub 파란색
+                  'TeamB': 'cf222e', // GitHub 빨간색
+                  'TeamC': '1a7f37', // GitHub 초록색
+                  'TeamD': '9a6700'  // GitHub 노란색
+                };
 
-                // 이미 존재하는 팀 라벨 제거
-                const existingTeamLabels = currentLabels
-                  .filter(label => label.name.startsWith('Team'))
-                  .map(label => label.name);
-
-                if (existingTeamLabels.length > 0) {
-                  for (const label of existingTeamLabels) {
-                    await github.rest.issues.removeLabel({
-                      owner: context.repo.owner,
-                      repo: context.repo.repo,
-                      issue_number: context.payload.pull_request.number,
-                      name: label
-                    });
-                  }
-                }
-
-                // 새 라벨 추가
-                await github.rest.issues.addLabels({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: context.payload.pull_request.number,
-                  labels: labelsArray
-                });
-                
-                console.log(`Successfully added labels: ${labelsArray.join(', ')}`);
-                
-              } catch (error) {
-                console.error('Error adding labels:', error);
-                
-                // 라벨이 존재하지 않으면 생성
+                // 각 라벨에 대해 처리
                 for (const label of labelsArray) {
+                  console.log(`Processing label: ${label}`);
                   try {
-                    // 팀별 색상 설정
-                    const teamColors = {
-                      'TeamA': '0052cc', // 파란색
-                      'TeamB': 'ff6b6b', // 빨간색
-                      'TeamC': '4ecdc4', // 민트색
-                      'TeamD': 'ffe66d'  // 노란색
-                    };
-                    
-                    const color = teamColors[label] || 'E91E63';
+                    // 라벨 생성 시도
+                    const color = teamColors[label] || 'db61a2';
+                    console.log(`Creating/updating label ${label} with color ${color}`);
                     
                     await github.rest.issues.createLabel({
                       owner: context.repo.owner,
@@ -125,26 +93,29 @@ jobs:
                       color: color,
                       description: `Team label for ${label}`
                     });
-                    console.log(`Created new label: ${label}`);
+                    console.log(`Label created/updated: ${label}`);
                   } catch (createError) {
+                    // 이미 존재하는 라벨이면 무시
                     if (!createError.message.includes('already_exists')) {
-                      console.error(`Error creating label ${label}:`, createError);
+                      console.error(`Error with label ${label}:`, createError);
+                    } else {
+                      console.log(`Label ${label} already exists`);
                     }
                   }
                 }
+
+                // PR에 라벨 추가
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.payload.pull_request.number,
+                  labels: labelsArray
+                });
                 
-                // 라벨 생성 후 다시 추가 시도
-                try {
-                  await github.rest.issues.addLabels({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    issue_number: context.payload.pull_request.number,
-                    labels: labelsArray
-                  });
-                  console.log(`Successfully added labels after creation: ${labelsArray.join(', ')}`);
-                } catch (retryError) {
-                  console.error('Error adding labels after creation:', retryError);
-                }
+                console.log(`Successfully added labels: ${labelsArray.join(', ')}`);
+              } catch (error) {
+                console.error('Error in label operations:', error);
+                throw error;
               }
             } else {
               console.log('No team member names found in PR title');
